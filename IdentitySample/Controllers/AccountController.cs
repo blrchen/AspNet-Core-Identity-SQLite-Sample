@@ -12,12 +12,14 @@ using Microsoft.Extensions.Options;
 using IdentitySample.Models;
 using IdentitySample.Models.AccountViewModels;
 using IdentitySample.Services;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 
 namespace IdentitySample.Controllers
 {
     [Authorize]
     public class AccountController : Controller
     {
+        private readonly RoleManager<IdentityRole> _roleManager;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly IEmailSender _emailSender;
@@ -26,6 +28,7 @@ namespace IdentitySample.Controllers
         private readonly string _externalCookieScheme;
 
         public AccountController(
+            RoleManager<IdentityRole> roleManager,
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
             IOptions<IdentityCookieOptions> identityCookieOptions,
@@ -33,6 +36,7 @@ namespace IdentitySample.Controllers
             ISmsSender smsSender,
             ILoggerFactory loggerFactory)
         {
+            _roleManager = roleManager;
             _userManager = userManager;
             _signInManager = signInManager;
             _externalCookieScheme = identityCookieOptions.Value.ExternalCookieAuthenticationScheme;
@@ -124,6 +128,23 @@ namespace IdentitySample.Controllers
                     //    $"Please confirm your account by clicking this link: <a href='{callbackUrl}'>link</a>");
                     await _signInManager.SignInAsync(user, isPersistent: false);
                     _logger.LogInformation(3, "User created a new account with password.");
+
+                    if (user.UserName.Contains("admin"))
+                    {
+                        string roleName = "Admin";
+                        if (!await _roleManager.RoleExistsAsync(roleName))
+                        {
+                            var create = await _roleManager.CreateAsync(new IdentityRole(roleName));
+
+                            if (!create.Succeeded)
+                            {
+                                throw new Exception("Failed to create role");
+                            }
+                        }
+                        var adminRole = await _roleManager.FindByNameAsync("Admin");
+                        await _userManager.AddToRoleAsync(user, adminRole.Name);
+                    }
+
                     return RedirectToLocal(returnUrl);
                 }
                 AddErrors(result);
