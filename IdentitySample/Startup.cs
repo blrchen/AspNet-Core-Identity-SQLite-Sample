@@ -49,13 +49,16 @@ namespace IdentitySample
 
             services.AddMvc();
 
+            // Add Database Initializer
+            services.AddScoped<IDbInitializer, DBInitializer>();
+
             // Add application services.
             services.AddTransient<IEmailSender, AuthMessageSender>();
             services.AddTransient<ISmsSender, AuthMessageSender>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory)
+        public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory, IDbInitializer dbInitializer)
         {
             loggerFactory.AddConsole(Configuration.GetSection("Logging"));
             loggerFactory.AddDebug();
@@ -74,6 +77,9 @@ namespace IdentitySample
             app.UseStaticFiles();
 
             app.UseIdentity();
+
+            // Generate EF Core Seed Data
+            dbInitializer.Initialize();
 
             // Add external authentication middleware below. To configure them please see https://go.microsoft.com/fwlink/?LinkID=532715
 
